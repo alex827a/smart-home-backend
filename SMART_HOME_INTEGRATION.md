@@ -302,11 +302,3 @@ mosquitto_pub -h 127.0.0.1 -p 8883 --cafile 'C:\mosquitto\certs\rootCA.pem' --ce
 - Temperature impact: lamp (+0.8°C), hvac (-1.5°C), fan (+0.1°C), heater (+5.5°C)
 - Power consumption: base 250W + device loads (lamp:10W, hvac:60W, fan:15W, heater:80W)
 
-## Next Steps
-
-- Add persistent storage for device states
-- Implement JWT authentication for API
-- Add health check endpoint
-- Containerize with Docker
-- Add unit tests
-- Implement device discovery via MQTT
