@@ -26,7 +26,8 @@ http://127.0.0.1:8000/api/devices
 
 Toggle device (example using PowerShell's Invoke-RestMethod):
 
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/devices/lamp/toggle
+Invoke-RestMethod -Method Post 
+-Uri http://127.0.0.1:8000/api/devices/lamp/toggle
 
 Swagger UI:
 
