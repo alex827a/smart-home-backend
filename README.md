@@ -37,3 +37,6 @@ Integration with SmartHome2:
 - Configure SmartHome2 to poll /api/metrics occasionally for telemetry.
 - Use POST /api/devices/{id}/toggle to change device state.
 - The API is intentionally minimal: add auth, CORS, and persistent storage as needed.
+  ## Client application
+
+The client repository for this backend: [alex827a/smart-home-client-maui](https://github.com/alex827a/smart-home-client-maui)
