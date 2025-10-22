@@ -1,4 +1,4 @@
-Setup and run (Windows PowerShell)
+﻿Setup and run (Windows PowerShell)
 
 1) Ensure Python 3.10+ is installed:
 
