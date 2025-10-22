@@ -1,42 +1,80 @@
-Setup and run (Windows PowerShell)
+# Smart Home Backend
 
-1) Ensure Python 3.10+ is installed:
+## Overview
+A minimalist backend for smart home device management and telemetry. Designed for integration with external smart home systems and as a backend for the [Smart Home Client (MAUI)](https://github.com/alex827a/smart-home-client-maui).
 
-python --version
+## Features
+- REST API for device control and telemetry
+- Simple endpoints for metrics and device toggling
+- MQTT integration (optional)
+- Swagger UI for API documentation
+- Easy integration with SmartHome2 and other clients
 
-2) Create virtual environment and activate:
+## Requirements
+- Python 3.10+
+- Windows (instructions use PowerShell; adapt for Linux/Mac as needed)
+- Dependencies listed in `requirements.txt`
 
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
+## Installation
 
-3) Install dependencies:
+1. **Verify Python**
+   ```powershell
+   python --version
+   ```
 
-pip install -r requirements.txt
+2. **Create and activate virtual environment**
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
 
-Note: asyncio-mqtt is optional for MQTT publishing. If not installed, MQTT messages will be logged to console instead.
+3. **Install dependencies**
+   ```powershell
+   pip install -r requirements.txt
+   ```
 
-4) Run the server:
+   *Optional: For MQTT publishing support*
+   ```powershell
+   pip install asyncio-mqtt
+   ```
 
-uvicorn server:app --reload --host 0.0.0.0 --port 8000
+4. **Run the server**
+   ```powershell
+   uvicorn server:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-5) Test endpoints in browser or HTTP client:
+## Configuration
+- Environment variables can be used to configure server behavior (e.g., port, MQTT broker settings).
+- By default, MQTT messages are printed to the console if `asyncio-mqtt` is not installed.
 
-http://127.0.0.1:8000/api/metrics
-http://127.0.0.1:8000/api/devices
+## API Usage
 
-Toggle device (example using PowerShell's Invoke-RestMethod):
+- **Metrics:** [GET /api/metrics](http://127.0.0.1:8000/api/metrics)
+- **Devices:** [GET /api/devices](http://127.0.0.1:8000/api/devices)
+- **Toggle device (example, PowerShell):**
+  ```powershell
+  Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/devices/lamp/toggle
+  ```
+- **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/devices/lamp/toggle
+## Integration with SmartHome2
+- Configure SmartHome2 to poll `/api/metrics` for telemetry data.
+- Use `POST /api/devices/{id}/toggle` to change device state.
+- Minimal API: add authentication, CORS, and persistent storage as needed for your use case.
 
-Swagger UI:
+## Client Application
+See the official client repository: [alex827a/smart-home-client-maui](https://github.com/alex827a/smart-home-client-maui)
 
-http://127.0.0.1:8000/docs
+## Development & Contribution
 
-Integration with SmartHome2:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes and open a pull request
 
-- Configure SmartHome2 to poll /api/metrics occasionally for telemetry.
-- Use POST /api/devices/{id}/toggle to change device state.
-- The API is intentionally minimal: add auth, CORS, and persistent storage as needed.
-  ## Client application
+Feel free to open issues for bugs, feature requests, or questions.
 
-The client repository for this backend: [alex827a/smart-home-client-maui](https://github.com/alex827a/smart-home-client-maui)
+## License
+MIT License
+
+## Contact
+For support or feedback, open an [issue](https://github.com/alex827a/smart-home-backend/issues) or email: alexot422@gmail.com
