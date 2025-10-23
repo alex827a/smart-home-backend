@@ -103,7 +103,7 @@ $env:MQTT_KEY_FILE = "client-key.pem"
 
 # Server Configuration
 $env:HOST = "0.0.0.0"
-$env:PORT = "8000"
+$env:PORT = "8001"
 ```
 
 ### PowerShell Launch Script
@@ -119,7 +119,7 @@ $env:MQTT_CA_FILE = "C:\mosquitto\certs\rootCA.pem"
 $env:MQTT_CERT_FILE = "E:\ProjectResume\server\client-cert.pem"
 $env:MQTT_KEY_FILE = "E:\ProjectResume\server\client-key.pem"
 
-python run_server.py --host 0.0.0.0 --port 8000
+python run_server.py --host 0.0.0.0 --port 8001
 ```
 
 ## Testing Integration
@@ -154,7 +154,7 @@ python run_server.py
 
 ```powershell
 # Test HTTP API directly
-Invoke-WebRequest -Method Post -Uri "http://localhost:8000/api/devices/lamp/toggle"
+Invoke-WebRequest -Method Post -Uri "http://localhost:8001/api/devices/lamp/toggle"
 
 # Check MAUI app updates device state
 # Check server logs for MQTT/SSE broadcasts
@@ -167,7 +167,7 @@ Invoke-WebRequest -Method Post -Uri "http://localhost:8000/api/devices/lamp/togg
 #### MAUI App Shows "Disconnected"
 
 **Check:**
-1. Server is running: `http://localhost:8000/api/status`
+1. Server is running: `http://localhost:8001/api/status`
 2. Firewall allows connections
 3. Correct base URL in app configuration
 
