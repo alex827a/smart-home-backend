@@ -59,26 +59,26 @@ Production-ready FastAPI backend for smart home monitoring and control with real
 ┌─────────────────────────────────────────┐
 │         FastAPI Application             │
 │                                         │
-│  ┌──────────┐      ┌─────────────────┐ │
-│  │ REST API │──────│ Device Manager  │ │
-│  │  (HTTP)  │      │  (In-Memory)    │ │
-│  └──────────┘      └─────────────────┘ │
+│  ┌──────────┐      ┌─────────────────┐  │
+│  │ REST API │──────│ Device Manager  │  │
+│  │  (HTTP)  │      │  (In-Memory)    │  │
+│  └──────────┘      └─────────────────┘  │
 │         │                    │          │
 │         ▼                    ▼          │
-│  ┌──────────────────────────────────┐  │
-│  │   MQTT Publisher (aiomqtt)       │  │
-│  │   - TLS/mTLS Support             │  │
-│  │   - Auto-reconnect               │  │
-│  │   - Async Queue (200 msgs)       │  │
-│  └────────────┬─────────────────────┘  │
+│  ┌──────────────────────────────────┐   │
+│  │   MQTT Publisher (aiomqtt)       │   │
+│  │   - TLS/mTLS Support             │   │
+│  │   - Auto-reconnect               │   │
+│  │   - Async Queue (200 msgs)       │   │
+│  └────────────┬─────────────────────┘   │
 │               │                         │
 │               ├─────────────────────┐   │
 │               │                     │   │
 │               ▼                     ▼   │
-│  ┌────────────────────┐  ┌──────────┐  │
-│  │ SSE Broadcaster    │  │ To MQTT  │  │
-│  │ (Fallback Mode)    │  │ Broker   │  │
-│  └────────────────────┘  └──────────┘  │
+│  ┌────────────────────┐  ┌──────────┐   │
+│  │ SSE Broadcaster    │  │ To MQTT  │   │ 
+│  │ (Fallback Mode)    │  │ Broker   │   │
+│  └────────────────────┘  └──────────┘   │
 └──────────┬─────────────────────┬────────┘
            │                     │
            │ SSE (HTTP)          │ MQTT/TLS
