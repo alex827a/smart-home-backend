@@ -682,7 +682,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For detailed setup instructions, see:
-- [README_MQTT_TLS.md](README_MQTT_TLS.md) - Certificate and TLS setup
 - [SMART_HOME_INTEGRATION.md](SMART_HOME_INTEGRATION.md) - Client integration guide
 
 ---
