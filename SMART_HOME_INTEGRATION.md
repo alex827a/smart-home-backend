@@ -1,54 +1,300 @@
-# Smart Home Server Documentation
+# 🏠 SmartHome Integration Guide
 
 ## Overview
 
-This is a FastAPI-based smart home server that provides REST API endpoints for device management and metrics monitoring, with MQTT integration for real-time data publishing. The server supports TLS/mTLS authentication with Mosquitto MQTT broker and role-based access control.
+This guide covers the integration between the **FastAPI SmartHome Backend Server** and **.NET MAUI SmartHome Client**. The system supports multiple connection modes for maximum reliability and flexibility.
 
-### Features
+### System Architecture
 
-- **REST API**: Device control and metrics retrieval
-- **MQTT Integration**: Real-time publishing of metrics and device states
-- **TLS/mTLS Security**: Certificate-based authentication
-- **Role-based Access Control**: Admin and guest user roles
-- **Device-dependent Metrics**: Temperature and power consumption vary based on device states
-- **Async Architecture**: Non-blocking operations with asyncio
+```
+┌─────────────────────────────────────────┐
+│         .NET MAUI Client                │
+│         (Cross-platform App)            │
+│                                         │
+│  ┌──────────────────────────────────┐   │
+│  │   Connection Manager             │   │
+│  │   1. Check /api/status           │   │
+│  │   2. Choose connection method:   │   │
+│  │      - MQTT (preferred)          │   │
+│  │      - SSE Fallback (backup)     │   │
+│  └──────────────────────────────────┘   │
+└─────────────┬───────────────────────────┘
+              │ HTTP + MQTT/SSE
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│       FastAPI Backend Server            │
+│       (Python + AsyncIO)                │
+│                                         │
+│  ┌──────────────┐    ┌──────────────┐   │
+│  │ MQTT         │    │ SSE Endpoint │   │
+│  │ Publisher    │──▶│ /events/	  │   │
+│  │ (Primary)    │    │ stream       │   │
+│  └──────────────┘    └──────────────┘   │
+│         │                    │          │
+│         ▼                    ▼          │
+│  ┌──────────────────────────────────┐   │
+│  │   Broadcast to SSE Clients       │   │
+│  │   (Fallback + Hybrid Mode)       │   │
+│  └──────────────────────────────────┘   │
+└─────────────┬─────────────────────┬─────┘
+              │                     │
+              │ MQTT over TLS       │ SSE over HTTP
+              │ Port 8883           │ Port 8000/8001
+              ▼                     ▼
+        ┌─────────────────┐   ┌─────────────────┐
+        │ Mosquitto       │   │ Direct HTTP     │
+        │ Broker          │   │ Connection      │
+        │ (Optional)      │   │ (Always works)  │
+        └─────────────────┘   └─────────────────┘
+```
 
-### Architecture
+### Connection Modes
 
-- **FastAPI**: Web framework for REST API
-- **aiomqtt**: Async MQTT client for publishing
-- **Mosquitto**: MQTT broker with TLS/mTLS support
-- **mkcert**: Local CA for development certificates
+#### 1. **MQTT Mode** (Primary - Recommended)
+- **When**: Mosquitto broker is running and accessible
+- **Protocol**: MQTT over TLS/mTLS (port 8883)
+- **Advantages**:
+  - Lowest latency (~10ms)
+  - QoS levels (0, 1, 2)
+  - Retained messages
+  - Wildcard subscriptions
+  - Network-wide pub/sub
 
-## Installation and Setup
+#### 2. **SSE Fallback Mode** (Backup)
+- **When**: MQTT broker is unavailable or client prefers HTTP
+- **Protocol**: Server-Sent Events over HTTP (port 8000/8001)
+- **Advantages**:
+  - No additional infrastructure needed
+  - Works through HTTP proxies/firewalls
+  - Browser-native support
+  - Automatic reconnection
+
+#### 3. **Hybrid Mode** (Advanced)
+- **When**: Both MQTT and SSE are available
+- **Protocol**: Server publishes to both simultaneously
+- **Use Case**: Web clients use SSE, native apps use MQTT
+
+## MAUI Client Integration
 
 ### Prerequisites
 
-- Python 3.8+
-- Mosquitto MQTT broker
-- mkcert (for local certificates)
-- PowerShell (for Windows setup scripts)
+- **.NET 8.0+** with MAUI workload
+- **MQTTnet** NuGet package for MQTT support
+- **System.Net.Http.Json** for HTTP API calls
+- **Microsoft.Extensions.Logging** for logging
 
-### Certificate Setup
 
-1. Install mkcert:
-   ```powershell
-   choco install mkcert
-   mkcert -install
-   ```
 
-2. Generate certificates:
-   ```powershell
-   # Broker certificate
-   mkcert -cert-file broker-cert.pem -key-file broker-key.pem localhost 127.0.0.1
+## Server Configuration
 
-   # Client certificate
-   mkcert -cert-file client-cert.pem -key-file client-key.pem fastapi-server
+### Environment Variables
 
-   # Move to Mosquitto directory
-   mkdir C:\mosquitto\certs
-   move broker-cert.pem, broker-key.pem, rootCA.pem C:\mosquitto\certs\
-   ```
+```powershell
+# MQTT Configuration (Primary)
+$env:MQTT_HOST = "127.0.0.1"
+$env:MQTT_PORT = "8883"
+$env:MQTT_USE_TLS = "true"
+$env:MQTT_USER = "fastapi-server"
+$env:MQTT_PASS = "123"
+$env:MQTT_CA_FILE = "C:\mosquitto\certs\rootCA.pem"
+$env:MQTT_CERT_FILE = "client-cert.pem"
+$env:MQTT_KEY_FILE = "client-key.pem"
+
+# Server Configuration
+$env:HOST = "0.0.0.0"
+$env:PORT = "8000"
+```
+
+### PowerShell Launch Script
+
+```powershell
+# start_server_with_mqtt_tls.ps1
+$env:MQTT_HOST = "127.0.0.1"
+$env:MQTT_PORT = "8883"
+$env:MQTT_USE_TLS = "true"
+$env:MQTT_USER = "fastapi-server"
+$env:MQTT_PASS = "123"
+$env:MQTT_CA_FILE = "C:\mosquitto\certs\rootCA.pem"
+$env:MQTT_CERT_FILE = "E:\ProjectResume\server\client-cert.pem"
+$env:MQTT_KEY_FILE = "E:\ProjectResume\server\client-key.pem"
+
+python run_server.py --host 0.0.0.0 --port 8000
+```
+
+## Testing Integration
+
+### 1. Full MQTT Mode
+
+```powershell
+# Terminal 1: Start Mosquitto
+mosquitto -c "C:\Program Files\mosquitto\mosquitto.conf" -v
+
+# Terminal 2: Start Server
+.\start_server_with_mqtt_tls.ps1
+
+# Terminal 3: Run MAUI App
+# Should connect via MQTT, show "🟢 MQTT Connected"
+```
+
+### 2. SSE Fallback Mode
+
+```powershell
+# Terminal 1: Stop Mosquitto
+Stop-Process -Name mosquitto -Force
+
+# Terminal 2: Start Server
+python run_server.py
+
+# Terminal 3: Run MAUI App
+# Should fallback to SSE/polling, show "🟡 SSE Fallback"
+```
+
+### 3. Device Control Test
+
+```powershell
+# Test HTTP API directly
+Invoke-WebRequest -Method Post -Uri "http://localhost:8000/api/devices/lamp/toggle"
+
+# Check MAUI app updates device state
+# Check server logs for MQTT/SSE broadcasts
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+#### MAUI App Shows "Disconnected"
+
+**Check:**
+1. Server is running: `http://localhost:8000/api/status`
+2. Firewall allows connections
+3. Correct base URL in app configuration
+
+#### MQTT Connection Fails
+
+**Check:**
+1. Mosquitto is running: `Get-Process mosquitto`
+2. Certificates are valid and accessible
+3. ACL allows client connection
+4. Username/password correct
+
+#### SSE Fallback Not Working
+
+**Check:**
+1. HTTP connection works: `curl http://localhost:8000/api/metrics`
+2. Server logs show SSE client connections
+3. No CORS issues (add CORS middleware if needed)
+
+### Performance Issues
+
+#### High Latency in SSE Mode
+
+**Solution:**
+- Reduce polling interval (minimum 1 second)
+- Implement WebSocket instead of SSE for better performance
+- Use MQTT when available
+
+#### Memory Usage
+
+**Solution:**
+- Monitor connection count via `/api/status`
+- Implement connection limits
+- Clean up disconnected clients
+
+## Security Considerations
+
+### MQTT Security
+
+- Always use TLS in production
+- Rotate certificates regularly
+- Use strong passwords
+- Restrict ACL permissions
+
+### HTTP Security
+
+- Add authentication to API endpoints
+- Use HTTPS in production
+- Implement rate limiting
+- Validate input data
+
+### MAUI App Security
+
+- Store credentials securely (not in code)
+- Use certificate pinning
+- Implement logout functionality
+- Handle network errors gracefully
+
+## Deployment
+
+### Development
+
+```powershell
+# Local development
+.\start_server_with_mqtt_tls.ps1  # With MQTT
+python run_server.py              # SSE only
+```
+
+### Production
+
+1. **Server Deployment:**
+   - Use reverse proxy (nginx/caddy)
+   - Enable HTTPS
+   - Configure firewall
+   - Set up monitoring
+
+2. **MAUI App Deployment:**
+   - Build for target platforms
+   - Configure production URLs
+   - Set up app store distribution
+
+3. **Mosquitto Deployment:**
+   - Use production certificates
+   - Configure persistent storage
+   - Set up monitoring and logging
+
+## API Reference
+
+### Server Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/status` | Server status and connection info |
+| GET | `/api/metrics` | Current system metrics |
+| GET | `/api/devices` | List of all devices |
+| POST | `/api/devices/{id}/toggle` | Toggle device state |
+| GET | `/api/events/stream` | SSE event stream |
+
+### MQTT Topics
+
+| Topic | Direction | QoS | Description |
+|-------|-----------|-----|-------------|
+| `home/system/metrics` | Server → Client | 0 | Periodic metrics |
+| `home/{device_id}/state` | Server → Client | 1 | Device state changes |
+
+### SSE Events
+
+| Event Type | Payload | Description |
+|------------|---------|-------------|
+| `system/connection` | Connection info | Client connected |
+| `system/initial-state` | Device list | Initial device states |
+| `home/system/metrics` | Metrics data | Metrics update |
+| `home/{device_id}/state` | Device data | Device state change |
+
+## Support
+
+For issues and questions:
+
+1. Check server logs for error messages
+2. Verify network connectivity
+3. Test with provided examples
+4. Check firewall and proxy settings
+
+## Version Compatibility
+
+- **Server**: Python 3.10+, FastAPI 0.100+
+- **MAUI Client**: .NET 8.0+, MQTTnet 4.3+
+- **Mosquitto**: 2.0.18+ (optional)
 
 ### Mosquitto Configuration
 

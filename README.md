@@ -33,6 +33,7 @@ Production-ready FastAPI backend for smart home monitoring and control with real
 ### 🔥 Core Functionality
 - **RESTful API**: FastAPI-powered HTTP endpoints for metrics and device control
 - **Real-time MQTT**: Publish device states and metrics to MQTT broker with TLS/mTLS
+- **SSE Fallback**: Server-Sent Events for real-time updates when MQTT is unavailable
 - **Device Management**: Control smart home devices (lamp, HVAC, fan, heater)
 - **Dynamic Metrics**: Temperature calculation based on active devices
 - **Automatic Publishing**: Periodic metrics updates every 5 seconds
@@ -48,6 +49,8 @@ Production-ready FastAPI backend for smart home monitoring and control with real
 - **Async/Await**: Non-blocking I/O with asyncio and aiomqtt
 - **Windows Compatible**: WindowsSelectorEventLoopPolicy support
 - **Auto-Reconnect**: MQTT connection resilience with backoff
+- **Hybrid Mode**: Simultaneous MQTT + SSE broadcasting
+- **Zero Configuration**: Works without MQTT broker (SSE fallback)
 - **Queue Management**: Buffered MQTT publishing (200 message queue)
 - **Environment Configuration**: 12-factor app compliance
 
@@ -70,25 +73,41 @@ Production-ready FastAPI backend for smart home monitoring and control with real
 │  │   - TLS/mTLS Support             │  │
 │  │   - Auto-reconnect               │  │
 │  │   - Async Queue (200 msgs)       │  │
-│  └──────────────────────────────────┘  │
-└─────────────────┬───────────────────────┘
-                  │ MQTT over TLS
-                  │ Port 8883
-                  ▼
-        ┌─────────────────────┐
-        │ Mosquitto Broker    │
-        │ - TLS/mTLS          │
-        │ - ACL Authorization │
-        │ - Password Auth     │
-        └─────────────────────┘
-                  │
-                  ▼
-        ┌─────────────────────┐
-        │ MQTT Clients        │
-        │ - MAUI App (guest)  │
-        │ - Admin Tools       │
-        └─────────────────────┘
+│  └────────────┬─────────────────────┘  │
+│               │                         │
+│               ├─────────────────────┐   │
+│               │                     │   │
+│               ▼                     ▼   │
+│  ┌────────────────────┐  ┌──────────┐  │
+│  │ SSE Broadcaster    │  │ To MQTT  │  │
+│  │ (Fallback Mode)    │  │ Broker   │  │
+│  └────────────────────┘  └──────────┘  │
+└──────────┬─────────────────────┬────────┘
+           │                     │
+           │ SSE (HTTP)          │ MQTT/TLS
+           │                     │ Port 8883
+           ▼                     ▼
+  ┌─────────────────┐  ┌─────────────────────┐
+  │ Web Clients     │  │ Mosquitto Broker    │
+  │ (Browser SSE)   │  │ - TLS/mTLS          │
+  └─────────────────┘  │ - ACL Authorization │
+                       │ - Password Auth     │
+                       └──────────┬──────────┘
+                                  │
+                                  ▼
+                       ┌─────────────────────┐
+                       │ Native Clients      │
+                       │ - MAUI App (MQTT)   │
+                       │ - Admin Tools       │
+                       └─────────────────────┘
 ```
+
+**Operating Modes:**
+- 🟢 **MQTT Mode**: Primary mode when broker is available
+- 🟡 **SSE Fallback**: Automatic fallback when broker is down
+- 🔵 **Hybrid Mode**: Both MQTT + SSE simultaneously (web + native clients)
+
+> 💡 **New!** Server now works without MQTT broker using Server-Sent Events (SSE). Perfect for development or web-only deployments. See [README_SSE_FALLBACK.md](README_SSE_FALLBACK.md) for details.
 
 ### Technology Stack
 
@@ -435,6 +454,75 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/devices/lamp/toggl
 **Error Responses:**
 - `404 Not Found`: Device ID does not exist
 
+#### 4. Get Server Status
+
+**GET** `/api/status`
+
+Returns server status and MQTT availability. Use this to determine connection method.
+
+**Response:**
+```json
+{
+  "mqtt_available": false,
+  "mqtt_broker": "127.0.0.1",
+  "mqtt_port": 8883,
+  "mqtt_tls": true,
+  "sse_clients_count": 3,
+  "recommended_mode": "sse",
+  "timestamp": "2025-10-22T14:30:00"
+}
+```
+
+**Use Case:**
+```javascript
+const status = await fetch('/api/status').then(r => r.json());
+if (status.recommended_mode === 'mqtt') {
+    // Connect via MQTT
+} else {
+    // Use SSE fallback
+}
+```
+
+#### 5. Real-time Event Stream (SSE)
+
+**GET** `/api/events/stream`
+
+Server-Sent Events endpoint for real-time updates without MQTT broker.
+
+**Connection:**
+```javascript
+const eventSource = new EventSource('http://localhost:8000/api/events/stream');
+
+eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Topic:', data.topic);
+    console.log('Payload:', data.payload);
+};
+```
+
+**Event Format:**
+```json
+{
+  "topic": "home/system/metrics",
+  "payload": {
+    "temp": 23.4,
+    "humidity": 45,
+    "power": 405,
+    "ts": "2025-10-22T14:30:00"
+  },
+  "timestamp": "2025-10-22T14:30:01"
+}
+```
+
+**Features:**
+- 🔄 Auto-reconnection
+- ⚡ Real-time updates (same as MQTT)
+- 📱 Browser-native support
+- 🔁 30-second keepalive
+- 🌐 Works through firewalls
+
+**See also:** [README_SSE_FALLBACK.md](README_SSE_FALLBACK.md) for detailed SSE documentation.
+
 ---
 
 ## 📡 MQTT Integration
@@ -574,6 +662,9 @@ Invoke-RestMethod http://127.0.0.1:8000/api/devices
 
 # Toggle lamp
 Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/devices/lamp/toggle
+
+# Check server status
+Invoke-RestMethod http://127.0.0.1:8000/api/status
 ```
 
 **cURL:**
@@ -581,9 +672,38 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/devices/lamp/toggle
 curl http://127.0.0.1:8000/api/metrics
 curl http://127.0.0.1:8000/api/devices
 curl -X POST http://127.0.0.1:8000/api/devices/hvac/toggle
+curl http://127.0.0.1:8000/api/status
 ```
 
-### 2. Test MQTT Connection
+### 2. Test SSE Fallback (Web Client)
+
+**Open in browser:**
+```
+http://127.0.0.1:8000/client_fallback_example.html
+```
+
+**Or use JavaScript console:**
+```javascript
+const eventSource = new EventSource('http://localhost:8000/api/events/stream');
+
+eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Event:', data);
+};
+
+eventSource.onerror = (error) => {
+    console.error('SSE error:', error);
+};
+```
+
+**Features to test:**
+- ✅ Real-time metrics updates (every 5 seconds)
+- ✅ Device state changes when toggling
+- ✅ Connection status display
+- ✅ Automatic mode detection (MQTT/SSE)
+- ✅ Reconnection after server restart
+
+### 3. Test MQTT Connection
 
 **Admin User:**
 ```powershell
@@ -605,13 +725,43 @@ mosquitto_sub -h 127.0.0.1 -p 8883 `
   -t "home/system/metrics" -v
 ```
 
-### 3. Verify Periodic Publishing
+### 4. Verify Periodic Publishing
 
-Metrics are published every 5 seconds automatically. Check MQTT logs:
+Metrics are published every 5 seconds automatically. Check MQTT logs or SSE stream:
 
 ```
 home/system/metrics {"temp": 23.4, "humidity": 45, "power": 405, "ts": "..."}
 ```
+
+### 5. Test Fallback Mode
+
+**Scenario: MQTT broker goes down**
+
+```powershell
+# Terminal 1: Start server with MQTT
+.\start_server_with_mqtt_tls.ps1
+
+# Terminal 2: Open web client
+# http://localhost:8000/client_fallback_example.html
+# Status should show: "MQTT Active + SSE"
+
+# Terminal 3: Stop Mosquitto
+Stop-Process -Name mosquitto -Force
+
+# Web client automatically switches to: "SSE Fallback Mode"
+# Events continue working via SSE
+
+# Terminal 4: Restart Mosquitto
+mosquitto -c "C:\Program Files\mosquitto\mosquitto.conf" -v
+
+# Server reconnects, status shows: "MQTT Active + SSE"
+```
+
+**Expected behavior:**
+- ✅ No interruption in client connections
+- ✅ Events continue during MQTT downtime
+- ✅ Automatic reconnection when MQTT returns
+- ✅ Server logs show mode transitions
 
 ---
 
@@ -705,25 +855,28 @@ MQTT: Message published to home/system/metrics
 
 ```
 smart-home-backend/
-├── 📄 server.py                    # Main FastAPI application
-├── 📄 run_server.py                # Windows-compatible launcher
+├── 📄 server.py                       # Main FastAPI application with MQTT + SSE
+├── 📄 run_server.py                   # Windows-compatible launcher
 ├── 📄 start_server_with_mqtt_tls.ps1  # PowerShell launch script
-├── 📄 requirements.txt             # Python dependencies
-├── 📄 .gitignore                   # Git ignore rules
-├── 📄 README.md                    # This file
-├── 📄 README_MQTT_TLS.md          # TLS/mTLS setup guide
-├── 📄 SMART_HOME_INTEGRATION.md   # Client integration guide
-├── 🔐 client-cert.pem             # MQTT client certificate (not in Git)
-├── 🔐 client-key.pem              # MQTT client private key (not in Git)
-└── 📁 .venv/                      # Virtual environment (not in Git)
+├── 📄 requirements.txt                # Python dependencies
+├── 📄 .gitignore                      # Git ignore rules
+├── 📄 README.md                       # This file
+├── 📄 README_MQTT_TLS.md              # TLS/mTLS setup guide
+├── 📄 README_SSE_FALLBACK.md          # SSE fallback documentation
+├── 📄 SMART_HOME_INTEGRATION.md       # Client integration guide
+├── 📄 client_fallback_example.html    # Web client demo
+├── 🔐 client-cert.pem                 # MQTT client certificate (not in Git)
+├── 🔐 client-key.pem                  # MQTT client private key (not in Git)
+└── 📁 .venv/                          # Virtual environment (not in Git)
 ```
 
 ### Key Files
 
-- **server.py**: FastAPI app with async MQTT publisher, device management, and metrics calculation
+- **server.py**: FastAPI app with async MQTT publisher, SSE broadcaster, device management, and metrics calculation
 - **run_server.py**: Sets `WindowsSelectorEventLoopPolicy` for Windows compatibility
 - **start_server_with_mqtt_tls.ps1**: Sets environment variables and launches server with TLS
 - **requirements.txt**: Python package dependencies
+- **client_fallback_example.html**: Full-featured web client demonstrating SSE fallback
 
 ---
 
@@ -771,4 +924,4 @@ For detailed setup instructions, see:
 
 ---
 
-**Made with ❤️ using FastAPI and Python**
+**Made using FastAPI and Python**
