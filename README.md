@@ -338,13 +338,13 @@ python run_server.py
 ### Method 3: Uvicorn Direct
 
 ```powershell
-uvicorn server:app --reload --host 0.0.0.0 --port 8000
+uvicorn server:app --reload --host 0.0.0.0 --port 8001
 ```
 
 **Server will start on:**
-- HTTP API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- HTTP API: `http://localhost:8001`
+- Swagger UI: `http://localhost:8001/docs`
+- ReDoc: `http://localhost:8001/redoc`
 
 ---
 
@@ -353,7 +353,7 @@ uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ### Base URL
 
 ```
-http://127.0.0.1:8000
+http://127.0.0.1:8001
 ```
 
 ### Endpoints
@@ -430,7 +430,7 @@ Toggles device on/off state.
 
 **Example:**
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/devices/lamp/toggle
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8001/api/devices/lamp/toggle
 ```
 
 **Response:**
@@ -488,7 +488,7 @@ Server-Sent Events endpoint for real-time updates without MQTT broker.
 
 **Connection:**
 ```javascript
-const eventSource = new EventSource('http://localhost:8000/api/events/stream');
+const eventSource = new EventSource('http://localhost:8001/api/events/stream');
 
 eventSource.onmessage = (event) => {
     const data = JSON.parse(event.data);
