@@ -652,10 +652,8 @@ smart-home-backend/
 ├── 📄 README_MQTT_TLS.md              # TLS/mTLS setup guide
 ├── 📄 README_SSE_FALLBACK.md          # SSE fallback documentation
 ├── 📄 SMART_HOME_INTEGRATION.md       # Client integration guide
-├── 📄 client_fallback_example.html    # Web client demo
-├── 🔐 client-cert.pem                 # MQTT client certificate (not in Git)
-├── 🔐 client-key.pem                  # MQTT client private key (not in Git)
-└── 📁 .venv/                          # Virtual environment (not in Git)
+├── 🔐 broker-cert.pem                 # MQTT broker certificate (not in Git)
+├── 🔐 broker-key.pem                  # MQTT broker private key (not in Git)
 ```
 
 ### Key Files
